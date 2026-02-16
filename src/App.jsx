@@ -1,8 +1,10 @@
+// App.jsx
 // ======================================================
 // 🔷 IMPORTS
 // ======================================================
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './App.css';
 import { QRCodeCanvas } from 'qrcode.react';
 import Swal from "sweetalert2";
@@ -11,7 +13,7 @@ import {
   Plus, Trash2, Users, Receipt, Check, Coffee, X, Edit2, RefreshCw,
   Percent, Smartphone, ArrowRight, Menu, LayoutDashboard, UtensilsCrossed,
   Wallet, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LogOut,
-  History, Save, FileText, Calendar, User
+  History, Save, FileText, Calendar, User, Share2, Copy, CheckCircle, Link // ✅ เพิ่มไอคอนครบแล้ว
 } from 'lucide-react';
 
 import { auth, googleProvider, db } from './firebase';
@@ -141,6 +143,7 @@ const getMemberBreakdown = (bill) => {
 // ======================================================
 
 const App = () => {
+  const navigate = useNavigate();
 
   // ==================================================
   // 🔹 CORE STATE (Bill Data)
@@ -164,6 +167,10 @@ const App = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({});
   
+  // ✅ State สำหรับ Modal แชร์ห้อง
+  const [createdRoom, setCreatedRoom] = useState(null);
+  const [isCopiedLink, setIsCopiedLink] = useState(false);
+
   const [confirmConfig, setConfirmConfig] = useState({
     open: false,
     title: '',
@@ -179,13 +186,13 @@ const App = () => {
   };
 
   const openConfirm = (title, message, onConfirm) => {
-  setConfirmConfig({
-    open: true,
-    title,
-    message,
-    onConfirm
-  });
-};
+    setConfirmConfig({
+      open: true,
+      title,
+      message,
+      onConfirm
+    });
+  };
 
   // ==================================================
   // 🔹 BILL OPTIONS
@@ -265,7 +272,7 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
-    // ==================================================
+  // ==================================================
   // 🔹 DERIVED DATA (COMPUTED VALUES)
   // ==================================================
 
@@ -453,7 +460,6 @@ const handleLogin = async () => {
 };
 
 const handleLogout = () => {
-
   openConfirm(
     "ออกจากระบบ",
     "คุณต้องการออกจากระบบใช่ไหม?",
@@ -474,7 +480,6 @@ const handleLogout = () => {
       });
     }
   );
-
 };
 
   // ==================================================
@@ -546,11 +551,8 @@ const handleLogout = () => {
 
 
   const fetchHistory = async () => {
-
     if (!user) return;
-
     try {
-
       const q = query(
         collection(db, "bills"),
         where("uid", "==", user.uid),
@@ -580,7 +582,6 @@ const handleLogout = () => {
   }, [activeTab, user]);
 
   const deleteHistoryItem = async (id) => {
-
     openConfirm(
       "ยืนยันการลบ",
       "ต้องการลบบิลนี้ใช่ไหม?",
@@ -590,12 +591,10 @@ const handleLogout = () => {
         closeConfirm();
       }
     );
-
   };
 
 
 const handleClearBill = () => {
-
   openConfirm(
     "ยืนยันการล้างบิล",
     "ต้องการล้างบิลทั้งหมดและเริ่มใหม่ใช่ไหม?",
@@ -628,8 +627,76 @@ const handleClearBill = () => {
       closeConfirm();
     }
   );
-
 };
+
+  // ==================================================
+  // ✅ HANDLE CREATE ROOM (NEW VERSION)
+  // ==================================================
+  const handleCreateRoom = async () => {
+    // 1. เช็คความพร้อม
+    if (items.length === 0) return Swal.fire("แจ้งเตือน", "ไม่มีรายการอาหาร", "warning");
+    if (!promptPayId) return Swal.fire("แจ้งเตือน", "กรุณากรอกเบอร์ PromptPay ก่อนสร้างห้อง", "warning");
+  
+    // 2. ถามยืนยัน
+    const confirm = await Swal.fire({
+      title: 'สร้างห้องเก็บเงิน?',
+      text: 'ระบบจะสร้างลิงก์และ QR Code ให้เพื่อนสแกน',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'สร้างเลย',
+      cancelButtonText: 'ยกเลิก',
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: "swal-primary-btn",
+        cancelButton: "btn-cancel"
+      }
+    });
+  
+    if (!confirm.isConfirmed) return;
+  
+    try {
+      // 3. เตรียมข้อมูล
+      const roomPayload = {
+        hostName: user ? user.displayName : members[0] || "Host", 
+        hostUid: user ? user.uid : "anon",
+        createdAt: new Date(),
+        items: items,
+        members: members,
+        shares: memberShares,
+        promptPayId: promptPayId,
+        subtotal: subtotal,
+        serviceChargeAmount: serviceChargeAmount,
+        vatAmount: vatAmount,
+        totalAmount: grandTotal,
+        config: { useVat, useServiceCharge, serviceChargePercent }
+      };
+  
+      // 4. บันทึกลง Firebase
+      const docRef = await addDoc(collection(db, "paymentRooms"), roomPayload);
+      
+      // 5. สร้างลิงก์ (เพิ่ม /fair-split เพื่อความชัวร์กับ basename)
+      const origin = window.location.origin;
+      const roomLink = `${origin}/fair-split/pay/${docRef.id}`;
+      
+      // 6. เปิด Modal แสดงผล
+      setCreatedRoom({
+        id: docRef.id,
+        link: roomLink
+      });
+  
+    } catch (error) {
+      console.error(error);
+      Swal.fire("Error", "สร้างห้องไม่สำเร็จ", "error");
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (createdRoom) {
+      navigator.clipboard.writeText(createdRoom.link);
+      setIsCopiedLink(true);
+      setTimeout(() => setIsCopiedLink(false), 2000);
+    }
+  };
 
 
   // ==================================================
@@ -637,7 +704,6 @@ const handleClearBill = () => {
   // ==================================================
 
   const handleAddMember = useCallback(() => {
-
     if (
       memberName.trim() &&
       !members.includes(memberName.trim())
@@ -648,12 +714,10 @@ const handleClearBill = () => {
       ]);
       setMemberName('');
     }
-
   }, [members, memberName]);
 
 
   const handleRemoveMember = useCallback((target) => {
-
     if (members.length <= 1) {
       alert("ต้องมีสมาชิกอย่างน้อย 1 คน");
       return;
@@ -663,7 +727,6 @@ const handleClearBill = () => {
       "ลบสมาชิก",
       `ต้องการลบ ${target} ออกใช่ไหม?`,
       () => {
-
         setMembers(prev =>
           prev.filter(m => m !== target)
         );
@@ -677,11 +740,9 @@ const handleClearBill = () => {
               )
           }))
         );
-
         closeConfirm();
       }
     );
-
   }, [members]);
 
     // ==================================================
@@ -689,30 +750,23 @@ const handleClearBill = () => {
   // ==================================================
 
   const handleAddItem = useCallback(() => {
-
     const qty = itemQty ? parseInt(itemQty) : 1;
     const cleanName = itemName.trim();
 
     if (cleanName && itemPrice) {
-
       const price = parseFloat(itemPrice);
-
       if (isNaN(price) || price < 0) {
         alert("ราคาไม่ถูกต้อง");
         return;
       }
-
       const newItems = [];
       const timestamp = Date.now();
 
       for (let i = 0; i < qty; i++) {
-
         let finalName = cleanName;
-
         if (qty > 1) {
           finalName = `${cleanName} (${i + 1})`;
         }
-
         newItems.push({
           id: `${timestamp}-${i}-${Math.random().toString(36).substr(2, 9)}`,
           name: finalName,
@@ -723,7 +777,6 @@ const handleClearBill = () => {
       }
 
       setItems(prev => [...prev, ...newItems]);
-
       setExpandedGroups(prev => ({
         ...prev,
         [cleanName]: false
@@ -733,39 +786,30 @@ const handleClearBill = () => {
       setItemPrice('');
       setItemQty('1');
     }
-
   }, [itemName, itemPrice, itemQty]);
 
 
   const handleEditItemName = useCallback((id, oldName) => {
-
     const newName =
       window.prompt("แก้ไขชื่อรายการ:", oldName);
 
     if (newName && newName.trim() !== "") {
-
       setItems(prevItems =>
         prevItems.map(item => {
-
           if (item.id === id) {
-
             const trimmedName = newName.trim();
-
             const newBaseName =
               trimmedName.replace(/\s\(\d+\)$/, '');
-
             return {
               ...item,
               name: trimmedName,
               baseName: newBaseName
             };
           }
-
           return item;
         })
       );
     }
-
   }, []);
 
 
@@ -777,15 +821,11 @@ const handleClearBill = () => {
 
 
   const toggleParticipant = useCallback((itemId, member) => {
-
     setItems(prevItems =>
       prevItems.map(item => {
-
         if (item.id === itemId) {
-
           const isSelected =
             item.participants.includes(member);
-
           return {
             ...item,
             participants: isSelected
@@ -793,11 +833,9 @@ const handleClearBill = () => {
               : [...item.participants, member]
           };
         }
-
         return item;
       })
     );
-
   }, []);
 
 
@@ -810,13 +848,10 @@ const handleClearBill = () => {
 
 
   const handleChangeSvcString = (e) => {
-
     let valStr = e.target.value;
-
     if (valStr.length > 1 && valStr.startsWith('0')) {
       valStr = valStr.replace(/^0+/, '');
     }
-
     setSvcString(valStr);
     setServiceChargePercent(Number(valStr));
   };
@@ -827,9 +862,7 @@ const handleClearBill = () => {
   // ==================================================
 
   const qrPayload = useMemo(() => {
-
     if (!promptPayId) return "";
-
     if (
       promptPayId.length !== 10 &&
       promptPayId.length !== 13
@@ -844,7 +877,6 @@ const handleClearBill = () => {
       promptPayId,
       null
     );
-
   }, [promptPayId]);
 
 
@@ -895,75 +927,67 @@ const renderContent = () => {
   switch (activeTab) {
 
     // ==================================================
+    // 🔸 HOME
+    // ==================================================
+    case 'home':
+      return (
+        <div className="home-landing animate-fade-in">
+
+          <div className="home-hero">
+            <div className="hero-icon">
+              <Receipt size={48} />
+            </div>
+            <h1>ยินดีต้อนรับสู่ FairSplit</h1>
+            <p className="hero-subtext">
+              เว็บช่วยหารค่าอาหารแบบแฟร์ ๆ  
+              ใส่เมนู เลือกคนกิน ระบบคำนวณให้ครบ  
+              ไม่มีใครจ่ายเกิน ไม่มีใครหนีบิล 😆
+            </p>
+
+            <div className="hero-buttons">
+              <button
+                className="btn-start"
+                onClick={() => setActiveTab('members')}
+              >
+                เริ่มทำบิลเลย
+              </button>
+
+              {!user && (
+                <button
+                  className="btn-login-hero"
+                  onClick={handleLogin}
+                >
+                  เข้าสู่ระบบด้วย Google
+                </button>
+              )}
+            </div>
+          </div>
+
+
+          <div className="home-features">
+            <div className="feature-card">
+              <Users size={28} />
+              <h4>จัดการสมาชิกง่าย</h4>
+              <p>เพิ่มเพื่อน เลือกคนหาร ได้ในคลิกเดียว</p>
+            </div>
+            <div className="feature-card">
+              <LayoutDashboard size={28} />
+              <h4>คำนวณอัตโนมัติ</h4>
+              <p>รวม VAT / Service Charge ให้ครบ</p>
+            </div>
+            <div className="feature-card">
+              <Wallet size={28} />
+              <h4>สร้าง QR รับเงิน</h4>
+              <p>สแกนจ่ายได้ทันทีผ่าน PromptPay</p>
+            </div>
+          </div>
+
+        </div>
+      );
+
+    // ==================================================
     // 🔸 MEMBERS
     // ==================================================
-case 'home':
-  return (
-    <div className="home-landing animate-fade-in">
-
-      <div className="home-hero">
-
-        <div className="hero-icon">
-          <Receipt size={48} />
-        </div>
-
-        <h1>ยินดีต้อนรับสู่ FairSplit</h1>
-
-        <p className="hero-subtext">
-          เว็บช่วยหารค่าอาหารแบบแฟร์ ๆ  
-          ใส่เมนู เลือกคนกิน ระบบคำนวณให้ครบ  
-          ไม่มีใครจ่ายเกิน ไม่มีใครหนีบิล 😆
-        </p>
-
-        {/* 🔥 ปุ่มสองอัน */}
-        <div className="hero-buttons">
-
-          <button
-            className="btn-start"
-            onClick={() => setActiveTab('members')}
-          >
-            เริ่มทำบิลเลย
-          </button>
-
-          {!user && (
-            <button
-              className="btn-login-hero"
-              onClick={handleLogin}
-            >
-              เข้าสู่ระบบด้วย Google
-            </button>
-          )}
-
-        </div>
-
-      </div>
-
-
-      <div className="home-features">
-
-        <div className="feature-card">
-          <Users size={28} />
-          <h4>จัดการสมาชิกง่าย</h4>
-          <p>เพิ่มเพื่อน เลือกคนหาร ได้ในคลิกเดียว</p>
-        </div>
-
-        <div className="feature-card">
-          <LayoutDashboard size={28} />
-          <h4>คำนวณอัตโนมัติ</h4>
-          <p>รวม VAT / Service Charge ให้ครบ</p>
-        </div>
-
-        <div className="feature-card">
-          <Wallet size={28} />
-          <h4>สร้าง QR รับเงิน</h4>
-          <p>สแกนจ่ายได้ทันทีผ่าน PromptPay</p>
-        </div>
-
-      </div>
-
-    </div>
-  );
-
     case 'members':
       return (
         <div className="content-card animate-fade-in">
@@ -980,9 +1004,7 @@ case 'home':
                 className={`member-chip ${m === 'เรา' ? 'me' : ''}`}
               >
                 <div className="avatar">{m.charAt(0)}</div>
-
                 <span>{m}</span>
-
                 <button
                   onClick={() => handleRemoveMember(m)}
                   className="btn-icon-small"
@@ -1003,7 +1025,6 @@ case 'home':
                 e.key === 'Enter' && handleAddMember()
               }
             />
-
             <button
               onClick={handleAddMember}
               disabled={!memberName}
@@ -1031,7 +1052,6 @@ case 'home':
 
           <div className="add-item-wrapper-blue">
             <div className="add-item-row">
-
               <input
                 className="input-name"
                 type="text"
@@ -1039,7 +1059,6 @@ case 'home':
                 value={itemName}
                 onChange={(e) => setItemName(e.target.value)}
               />
-
               <input
                 className="input-qty"
                 type="number"
@@ -1048,7 +1067,6 @@ case 'home':
                 value={itemQty}
                 onChange={(e) => setItemQty(e.target.value)}
               />
-              
               <input
                 className="input-price"
                 type="number"
@@ -1058,7 +1076,6 @@ case 'home':
                 value={itemPrice}
                 onChange={(e) => {
                   const value = e.target.value;
-
                   if (value === '' || Number(value) >= 0) {
                     setItemPrice(value);
                   }
@@ -1067,20 +1084,17 @@ case 'home':
                   e.key === 'Enter' && handleAddItem()
                 }
               />
-
               <button
                 onClick={handleAddItem}
                 className="btn-add-blue"
               >
                 เพิ่ม
               </button>
-
             </div>
           </div>
 
 
           <div className="items-list">
-
             {items.length === 0 && (
               <div className="empty-state">
                 ยังไม่มีรายการอาหาร
@@ -1089,7 +1103,6 @@ case 'home':
 
             {Object.entries(groupedItems).map(
               ([groupName, groupItems]) => {
-
                 const isExpanded =
                   expandedGroups[groupName] !== false;
 
@@ -1098,7 +1111,6 @@ case 'home':
                     key={groupName}
                     className={`item-group-card ${!isExpanded ? 'collapsed' : ''}`}
                   >
-
                     <div
                       className="group-header"
                       onClick={() => toggleGroup(groupName)}
@@ -1116,7 +1128,6 @@ case 'home':
                           {groupName}
                         </span>
                       </div>
-
                       <span className="group-count-badge">
                         {groupItems.length} รายการ
                       </span>
@@ -1124,13 +1135,11 @@ case 'home':
 
                     {isExpanded && (
                       <div className="group-items-container animate-slide-down">
-
                         {groupItems.map((item, index) => (
                           <div
                             key={item.id}
                             className="sub-item-card"
                           >
-
                             <div className="sub-item-top-row">
                               <div style={{
                                 display: 'flex',
@@ -1140,7 +1149,6 @@ case 'home':
                                 <span className="sub-item-index">
                                   #{index + 1}
                                 </span>
-
                                 <button
                                   onClick={() =>
                                     handleEditItemName(item.id, item.name)
@@ -1150,14 +1158,12 @@ case 'home':
                                   <Edit2 size={12} />
                                 </button>
                               </div>
-
                               <span className="item-price">
                                 {item.price.toLocaleString()}
                               </span>
                             </div>
 
                             <div className="sub-item-bottom-row">
-
                               <div className="participant-selector-row">
                                 {members.map(m => (
                                   <button
@@ -1174,7 +1180,6 @@ case 'home':
                                   </button>
                                 ))}
                               </div>
-
                               <button
                                 onClick={() =>
                                   handleRemoveItem(item.id)
@@ -1183,22 +1188,16 @@ case 'home':
                               >
                                 <Trash2 size={14} />
                               </button>
-
                             </div>
-
                           </div>
                         ))}
-
                       </div>
                     )}
-
                   </div>
                 );
               }
             )}
-
           </div>
-
         </div>
       );
 
@@ -1222,7 +1221,6 @@ case 'home':
               marginBottom: '20px'
             }}
           >
-
             <label className={`option-pill ${useServiceCharge ? 'active' : ''}`}>
               <input
                 type="checkbox"
@@ -1263,19 +1261,15 @@ case 'home':
               <Percent size={14} />
               VAT 7%
             </label>
-
           </div>
 
           {items.length > 0 ? (
             <div className="summary-card-dark">
-
               <div className="bill-breakdown">
-
                 <div className="breakdown-row">
                   <span>รวมค่าอาหาร</span>
                   <span>{subtotal.toLocaleString()} ฿</span>
                 </div>
-
                 {useServiceCharge && (
                   <div className="breakdown-row text-muted">
                     <span>
@@ -1288,7 +1282,6 @@ case 'home':
                     </span>
                   </div>
                 )}
-
                 {useVat && (
                   <div className="breakdown-row text-muted">
                     <span>VAT (7%)</span>
@@ -1299,7 +1292,6 @@ case 'home':
                     </span>
                   </div>
                 )}
-
                 <div className="breakdown-row total-row">
                   <span>ยอดสุทธิ</span>
                   <span>
@@ -1308,7 +1300,6 @@ case 'home':
                     })} ฿
                   </span>
                 </div>
-
               </div>
 
               <hr className="divider-soft" />
@@ -1325,7 +1316,6 @@ case 'home':
                       </div>
                       {m}
                     </div>
-
                     <span className="summary-amount-green">
                       {memberShares[m]?.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
@@ -1335,7 +1325,6 @@ case 'home':
                   </div>
                 ))}
               </div>
-
             </div>
           ) : (
             <div className="empty-state">
@@ -1355,20 +1344,18 @@ case 'home':
         </div>
       );
 
-          // ==================================================
+    // ==================================================
     // 🔸 HISTORY
     // ==================================================
     case 'history':
       return (
         <div className="content-card animate-fade-in">
-
           <div className="section-header">
             <History size={20} />
             <h3>ประวัติบิล</h3>
           </div>
 
           {!user ? (
-
             <div className="empty-state-login">
               <p>กรุณาเข้าสู่ระบบเพื่อดูประวัติบิล</p>
               <button
@@ -1378,27 +1365,19 @@ case 'home':
                 G Login
               </button>
             </div>
-
           ) : historyList.length === 0 ? (
-
             <div className="empty-state">
               ยังไม่มีประวัติการบันทึก
             </div>
-
           ) : (
-
             <div className="history-list-page">
-
               {historyList.map(bill => (
-
                 <div
                   key={bill.id}
                   className="history-card"
                   onClick={() => setViewingBill(bill)}
                 >
-
                   <div className="history-header-row">
-
                     <div className="history-date-group">
                       <span className="history-date">
                         <Calendar size={14} style={{ marginRight: '4px' }} />
@@ -1409,7 +1388,6 @@ case 'home':
                             year: '2-digit'
                           })}
                       </span>
-
                       <span className="history-time">
                         {new Date(bill.date.seconds * 1000)
                           .toLocaleTimeString('th-TH', {
@@ -1418,29 +1396,22 @@ case 'home':
                           })} น.
                       </span>
                     </div>
-
                     <div className="history-price">
                       {bill.totalAmount?.toLocaleString()} ฿
                     </div>
-
                   </div>
-
                   <div className="history-divider"></div>
-
                   <div className="history-footer-row">
-
                     <div className="history-stats">
                       <span className="stat-badge">
                         <UtensilsCrossed size={12} />
                         {bill.items.length}
                       </span>
-
                       <span className="stat-badge">
                         <Users size={12} />
                         {bill.members.length}
                       </span>
                     </div>
-
                     <button
                       className="btn-delete-icon"
                       onClick={(e) => {
@@ -1450,17 +1421,11 @@ case 'home':
                     >
                       <Trash2 size={16} />
                     </button>
-
                   </div>
-
                 </div>
-
               ))}
-
             </div>
-
           )}
-
         </div>
       );
 
@@ -1478,10 +1443,8 @@ case 'home':
           </div>
 
           <div className="payment-box">
-
             <div className="input-row-icon">
               <Smartphone size={18} className="icon-input" />
-
               <input
                 type="text"
                 className="input-promptpay"
@@ -1508,7 +1471,6 @@ case 'home':
 
             {showQR && isValidLength && (
               <div className="qr-container">
-
                 <div className="qr-wrapper">
                   <QRCodeCanvas
                     value={qrPayload}
@@ -1517,11 +1479,26 @@ case 'home':
                     includeMargin={true}
                   />
                 </div>
-
                 <div className="qr-info">
                   <span>สแกนจ่ายได้เลย</span>
                 </div>
+              </div>
+            )}
 
+            {/* ✅ ปุ่มสร้างห้องจ่ายเงิน */}
+            {isValidLength && (
+              <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
+                <h4 style={{marginBottom: '10px', fontSize: '1rem', color: '#334155'}}>ห้องหารเงินออนไลน์</h4>
+                <button
+                  onClick={handleCreateRoom}
+                  className="btn-full-primary"
+                  style={{ background: '#10b981', borderColor: '#059669', color: 'white' }}
+                >
+                  <Share2 size={18} /> สร้างห้อง & แชร์ลิงก์ให้เพื่อน
+                </button>
+                <p style={{fontSize: '0.8rem', color: '#64748b', marginTop: '8px', textAlign: 'center'}}>
+                  เพื่อนจะเห็นเฉพาะยอดของตัวเอง และสแกนจ่ายได้ทันที
+                </p>
               </div>
             )}
 
@@ -1543,7 +1520,7 @@ case 'home':
 // ==================================================
 
 const menuItems = [
-  { id: 'home', label: 'หน้าหลัก', icon: <LayoutDashboard size={20} /> }, // ✅ เพิ่มอันนี้
+  { id: 'home', label: 'หน้าหลัก', icon: <LayoutDashboard size={20} /> },
   { id: 'members', label: 'สมาชิก', icon: <Users size={20} /> },
   { id: 'items', label: 'รายการอาหาร', icon: <UtensilsCrossed size={20} /> },
   { id: 'summary', label: 'สรุปยอด', icon: <LayoutDashboard size={20} /> },
@@ -1563,12 +1540,10 @@ return (
         🔸 MOBILE HEADER
     ============================ */}
     <div className="mobile-header">
-
       <div className="brand-mobile">
         <Receipt size={24} color="white" />
         <span className="brand-text">FairSplit</span>
       </div>
-
       <button
         className="mobile-menu-btn"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -1577,7 +1552,6 @@ return (
           ? <X size={24} color="white" />
           : <Menu size={24} color="white" />}
       </button>
-
     </div>
 
 
@@ -1585,23 +1559,18 @@ return (
         🔸 SIDEBAR
     ============================ */}
     <nav className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
-
       {/* Sidebar Header */}
       <div className="sidebar-header">
-
         <div className="logo-box">
           <Receipt size={28} color="white" />
         </div>
-
         <div className="brand-container">
           <h1 className="sidebar-title">FairSplit</h1>
           <span className="sidebar-subtitle">
             หารยาวแค่ไหนก็ง่าย
           </span>
         </div>
-
       </div>
-
 
       {/* Sidebar Menu */}
       <ul className="sidebar-menu">
@@ -1623,7 +1592,6 @@ return (
 
       {/* Sidebar Footer */}
       <div className="sidebar-footer">
-
         {/* Auth Box */}
         <div
           style={{
@@ -1635,13 +1603,11 @@ return (
           }}
         >
           {user ? (
-
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1661,7 +1627,6 @@ return (
                   {user.displayName.split(' ')[0]}
                 </span>
               </div>
-
               <button
                 onClick={handleLogout}
                 style={{
@@ -1675,11 +1640,8 @@ return (
               >
                 <LogOut size={14} />
               </button>
-
             </div>
-
           ) : (
-
             <button
               onClick={handleLogin}
               style={{
@@ -1703,10 +1665,8 @@ return (
               </span>
               เข้าสู่ระบบ
             </button>
-
           )}
         </div>
-
 
         {/* Total Display */}
         <div className="total-display-sidebar">
@@ -1718,7 +1678,6 @@ return (
           </div>
         </div>
 
-
         {/* Reset Button */}
         <button
           onClick={handleClearBill}
@@ -1727,54 +1686,50 @@ return (
           <RefreshCw size={14} />
           ล้างบิล
         </button>
-
       </div>
-
     </nav>
 
 
     {/* ============================
         🔸 MAIN CONTENT
     ============================ */}
-<main className="content-area">
+    <main className="content-area">
 
-  {renderContent()}
+      {renderContent()}
 
-  {activeTab !== 'home' && (
-    <div className="nav-buttons-container">
+      {activeTab !== 'home' && (
+        <div className="nav-buttons-container">
+          <button
+            onClick={goToPrev}
+            disabled={currentIndex === 0}
+            className="btn-nav prev"
+            style={{
+              visibility:
+                currentIndex === 0 ? 'hidden' : 'visible'
+            }}
+          >
+            <ChevronLeft size={20} />
+            ย้อนกลับ
+          </button>
 
-      <button
-        onClick={goToPrev}
-        disabled={currentIndex === 0}
-        className="btn-nav prev"
-        style={{
-          visibility:
-            currentIndex === 0 ? 'hidden' : 'visible'
-        }}
-      >
-        <ChevronLeft size={20} />
-        ย้อนกลับ
-      </button>
+          <button
+            onClick={goToNext}
+            disabled={currentIndex === menuOrder.length - 1}
+            className="btn-nav next"
+            style={{
+              visibility:
+                currentIndex === menuOrder.length - 1
+                  ? 'hidden'
+                  : 'visible'
+            }}
+          >
+            ถัดไป
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
 
-      <button
-        onClick={goToNext}
-        disabled={currentIndex === menuOrder.length - 1}
-        className="btn-nav next"
-        style={{
-          visibility:
-            currentIndex === menuOrder.length - 1
-              ? 'hidden'
-              : 'visible'
-        }}
-      >
-        ถัดไป
-        <ChevronRight size={20} />
-      </button>
-
-    </div>
-  )}
-
-</main>
+    </main>
 
 
     {/* ============================
@@ -1787,25 +1742,80 @@ return (
       />
     )}
 
+    {/* ============================
+        ✅ MODAL: SHARE ROOM
+        ============================ */}
+    {createdRoom && (
+      <div className="modal-overlay" onClick={() => setCreatedRoom(null)}>
+        <div className="share-modal-box animate-fade-in" onClick={e => e.stopPropagation()}>
+          
+          <div className="share-header">
+            <div className="icon-wrapper">
+              <Share2 size={32} color="white" />
+            </div>
+            <h3>ห้องพร้อมแล้ว!</h3>
+            <p>ให้เพื่อนสแกน QR หรือส่งลิงก์นี้ให้เพื่อน</p>
+          </div>
+
+          <div className="share-body">
+            {/* ส่วน QR Code สำหรับเข้าห้อง */}
+            <div className="room-qr-wrapper">
+              <QRCodeCanvas 
+                value={createdRoom.link} 
+                size={200}
+                level="M"
+                includeMargin={true}
+              />
+              <span className="qr-tag">Scan to Pay</span>
+            </div>
+
+            {/* ส่วน Link */}
+            <div className="link-box-container">
+              <label>ลิงก์สำหรับจ่ายเงิน</label>
+              <div className="link-input-group">
+                <input type="text" value={createdRoom.link} readOnly />
+                <button onClick={handleCopyLink} className={isCopiedLink ? 'copied' : ''}>
+                  {isCopiedLink ? <CheckCircle size={18}/> : <Copy size={18}/>}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="share-footer">
+            <button 
+              className="btn-full-primary" 
+              onClick={() => setCreatedRoom(null)}
+            >
+              ตกลง
+            </button>
+            <button 
+              className="btn-text-only"
+              onClick={() => window.open(createdRoom.link, '_blank')}
+            >
+              เปิดหน้าเว็บดูเอง
+            </button>
+          </div>
+
+        </div>
+      </div>
+    )}
+
 
     {/* ============================
-        🔸 MODAL
+        🔸 MODAL: BILL HISTORY VIEW
     ============================ */}
     {viewingBill && (
       <div
         className="modal-overlay"
         onClick={() => setViewingBill(null)}
       >
-
         <div
           className="bill-detail-modal"
           onClick={(e) => e.stopPropagation()}
         >
-
           <div className="bill-receipt-header">
             <FileText size={40} className="receipt-icon" />
             <h3>ใบเสร็จรับเงิน</h3>
-
             <p className="receipt-date">
               {new Date(viewingBill.date.seconds * 1000)
                 .toLocaleDateString('th-TH', {
@@ -1818,25 +1828,19 @@ return (
             </p>
           </div>
 
-
           <div className="bill-receipt-body">
-
             {Object.entries(getMemberBreakdown(viewingBill)).map(([memberName, data]) => (
-
               <div
                 key={memberName}
                 className="receipt-member-section"
               >
-
                 <div className="receipt-member-header">
                   <User size={16} />
                   <span className="member-name">
                     {memberName}
                   </span>
                 </div>
-
                 <div className="receipt-items-list">
-
                   {data.items.length === 0 ? (
                     <div className="receipt-empty">
                       ไม่มีรายการอาหาร
@@ -1856,9 +1860,7 @@ return (
                       </div>
                     ))
                   )}
-
                 </div>
-
                 {data.extraCharge > 0 && (
                   <div className="receipt-extra-row">
                     <span>ค่าธรรมเนียม/ภาษี</span>
@@ -1869,7 +1871,6 @@ return (
                     </span>
                   </div>
                 )}
-
                 <div className="receipt-member-total">
                   <span>รวมสุทธิ</span>
                   <span className="highlight">
@@ -1879,28 +1880,22 @@ return (
                     })} ฿
                   </span>
                 </div>
-
               </div>
-
             ))}
-                        <div className="receipt-divider-dashed"></div>
-
+            <div className="receipt-divider-dashed"></div>
             <div className="receipt-grand-total">
               <span>ยอดรวมทั้งสิ้น</span>
               <span>
                 {viewingBill.totalAmount?.toLocaleString()} ฿
               </span>
             </div>
-
           </div>
-
           <button
             onClick={() => setViewingBill(null)}
             className="btn-close-receipt"
           >
             ปิดหน้านี้
           </button>
-
         </div>
       </div>
     )}
@@ -1910,32 +1905,24 @@ return (
         ============================ */}
         {confirmConfig.open && (
           <div className="confirm-overlay">
-
             <div className="confirm-box">
-
               <h3>{confirmConfig.title}</h3>
               <p>{confirmConfig.message}</p>
-
               <div className="confirm-actions">
-
                 <button
                   className="btn-cancel"
                   onClick={closeConfirm}
                 >
                   ยกเลิก
                 </button>
-
                 <button
                   className="btn-confirm"
                   onClick={() => confirmConfig.onConfirm?.()}
                 >
                   ยืนยัน
                 </button>
-
               </div>
-
             </div>
-
           </div>
         )}
 
