@@ -770,33 +770,42 @@ const handleClearBill = () => {
   }, [members, memberName]);
 
 
-  const handleRemoveMember = useCallback((target) => {
-    if (members.length <= 1) {
-      alert("ต้องมีสมาชิกอย่างน้อย 1 คน");
-      return;
-    }
-
-    openConfirm(
-      "ลบสมาชิก",
-      `ต้องการลบ ${target} ออกใช่ไหม?`,
-      () => {
-        setMembers(prev =>
-          prev.filter(m => m !== target)
-        );
-
-        setItems(prevItems =>
-          prevItems.map(item => ({
-            ...item,
-            participants:
-              item.participants.filter(
-                p => p !== target
-              )
-          }))
-        );
-        closeConfirm();
+const handleRemoveMember = useCallback((target) => {
+  if (members.length <= 1) {
+    Swal.fire({
+      icon: "warning",
+      title: "ต้องมีสมาชิกอย่างน้อย 1 คน",
+      text: "ไม่สามารถลบสมาชิกคนสุดท้ายได้",
+      confirmButtonText: "เข้าใจแล้ว",
+      buttonsStyling: false,
+      customClass: {
+        confirmButton: "swal-primary-btn"
       }
-    );
-  }, [members]);
+    });
+    return;
+  }
+
+  openConfirm(
+    "ลบสมาชิก",
+    `ต้องการลบ ${target} ออกใช่ไหม?`,
+    () => {
+      setMembers(prev =>
+        prev.filter(m => m !== target)
+      );
+
+      setItems(prevItems =>
+        prevItems.map(item => ({
+          ...item,
+          participants: item.participants.filter(
+            p => p !== target
+          )
+        }))
+      );
+
+      closeConfirm();
+    }
+  );
+}, [members]);
 
     // ==================================================
   // 🔹 ITEM ACTIONS
