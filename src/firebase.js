@@ -1,10 +1,8 @@
-// src/firebase.js
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app"; // ✅ เพิ่ม getApps, getApp
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// ⚠️ ตรงนี้สำคัญ! ไปก๊อปปี้ firebaseConfig จากหน้าเว็บ Firebase Console ของคุณมาใส่แทนที่ตรงนี้นะครับ
-// (ค่าที่คุณเคยทำไว้ตอน Phase 3)
+// 🔥 เอา Config ของคุณมาใส่ตรงนี้เหมือนเดิม
 const firebaseConfig = {
   apiKey: "AIzaSyCnmn9iT6HqSl1tmFrCkYxi8f0R2IBk8V8",
   authDomain: "fair-split-app-c6b72.firebaseapp.com",
@@ -15,10 +13,11 @@ const firebaseConfig = {
   measurementId: "G-8LVDXKBLV0"
 };
 
-// เริ่มต้นระบบ Firebase
-const app = initializeApp(firebaseConfig);
+// 🔥 แก้บรรทัดนี้: เช็คก่อนว่ามี App แล้วหรือยัง กัน Error "Already exists"
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// ส่งออกตัวจัดการ (Auth & Database) ไปให้ไฟล์อื่นใช้
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-export const db = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+const db = getFirestore(app);
+
+export { auth, googleProvider, db };
