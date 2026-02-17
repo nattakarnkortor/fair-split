@@ -23,6 +23,9 @@ import {
   getDocs, orderBy, deleteDoc, doc, writeBatch // เพิ่ม writeBatch
 } from 'firebase/firestore';
 
+// นำเข้ารูปภาพประกอบ (ถ้ามี Error ตรงนี้ให้เช็ค path ให้ถูกต้อง)
+import heroImage from './assets/hero.png';
+
 const avatarEmojis = [
   "😎","🔥","🐱","🐶","🦊","🐼","🐵","🐯","🐨",
   "🦁","🐸","🐻","🐰","🦄","👻","🤖","👽","💀",
@@ -34,11 +37,6 @@ const getRandomAvatar = () => {
     Math.floor(Math.random() * avatarEmojis.length)
   ];
 };
-
-
-
-// นำเข้ารูปภาพประกอบจากโฟลเดอร์ assets ของคุณเอง (แก้ชื่อไฟล์ให้ตรง)
-import heroImage from './assets/hero.png';
 
 // ======================================================
 // 🔷 HELPER FUNCTIONS (PURE LOGIC)
@@ -1016,9 +1014,22 @@ const handleRemoveMember = useCallback((target) => {
   const currentIndex =
     menuOrder.indexOf(activeTab);
 
+  // ✅ แก้ไข Logic ปุ่มถัดไป
   const goToNext = () => {
-    // ✅ เช็คก่อนไปหน้า Summary ว่าเลือกคนครบหรือยัง
     if (activeTab === 'items') {
+        // 1. เช็คว่าไม่มีรายการอาหารเลย
+        if (items.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ยังไม่มีรายการอาหาร',
+                text: 'กรุณาเพิ่มรายการอาหารอย่างน้อย 1 รายการก่อนไปต่อ',
+                confirmButtonColor: '#3085d6',
+                customClass: { confirmButton: "swal-primary-btn" }
+            });
+            return;
+        }
+
+        // 2. เช็คว่ามีเมนูไหนยังไม่ได้เลือกคนกิน
         const emptyItems = items.filter(item => item.participants.length === 0);
         if (emptyItems.length > 0) {
             Swal.fire({
@@ -1121,10 +1132,7 @@ const renderContent = () => {
         </div>
       </div>
 
-      {/* เครดิตด้านล่าง (ตามรูปคือ dev by ชื่อกลุ่ม) */}
-      <footer className="home-footer">
-        © 2026 FairSplit | dev by ชื่อกลุ่ม
-      </footer>
+      {/* ✅ ลบ Footer ออกตามที่ขอ */}
       
     </div>
   );
@@ -1240,6 +1248,8 @@ case 'members':
             </div>
           </div>
 
+          {/* ✅ เพิ่มเส้นแบ่งตรงนี้ */}
+          <hr className="items-separator" />
 
           <div className="items-list">
             {items.length === 0 && (
@@ -1964,6 +1974,11 @@ return (
           <RefreshCw size={14} />
           ล้างบิล
         </button>
+
+        {/* ✅ เพิ่ม Copyright ไว้ที่นี่ */}
+        <div className="sidebar-copyright" style={{marginTop: '10px', fontSize: '0.7rem', color: '#64748b', textAlign: 'center'}}>
+            © 2026 FairSplit | dev by หารเท่า ไม่หารใจ
+        </div>
       </div>
     </nav>
 

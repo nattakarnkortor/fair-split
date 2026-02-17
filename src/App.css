@@ -1,3 +1,4 @@
+/* App.css */
 /* ✅ 1. ใช้ฟอนต์ Prompt */
 @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap');
 
@@ -120,6 +121,13 @@ button {
     background: #f1f5f9;
 }
 
+/* ✅ เส้นแบ่งในหน้า Items */
+.items-separator {
+    border: 0;
+    border-top: 1px solid #f1f5f9;
+    margin: 24px 0;
+}
+
 
 /* --- 🔥 Item List Style (Card Style แยกบรรทัด) --- */
 .items-list { display: flex; flex-direction: column; gap: 10px; }
@@ -201,25 +209,72 @@ button {
     box-shadow: 0 4px 10px rgba(0,0,0,0.03);
 }
 
-.confirmed-header {
-    background: #dcfce7;
-    color: #166534;
-    padding: 8px 12px;
-    border-radius: 8px;
+.confirmed-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.confirmed-card {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.9rem;
-    margin-bottom: 16px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    font-weight: 600;
+    width: 100%; /* ✅ ทำให้เต็มกรอบป้องกันบรรทัดสลับ */
 }
+
+.confirmed-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1; /* ✅ ให้กินพื้นที่ส่วนใหญ่ */
+    overflow: hidden; /* ✅ ป้องกันชื่อยาวเกินจนดัน */
+}
+
+.confirmed-left .icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.confirmed-card small {
+    display: block;
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-bottom: 2px;
+}
+
+.confirmed-card .value {
+    font-size: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* ✅ ถ้าชื่อยาวให้ขึ้น ... */
+}
+
+/* สีเบอร์ */
+.number-card {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* สีชื่อ */
+.name-card {
+    background: #e0f2fe;
+    color: #075985;
+}
+
 .btn-edit-small {
     background: white;
-    border: 1px solid #bbf7d0;
-    color: #166534;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    border: 1px solid rgba(0,0,0,0.1);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 0.8rem;
     cursor: pointer;
+    flex-shrink: 0; /* ✅ ไม่ให้ปุ่มหด */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .payment-mode-grid {
@@ -859,323 +914,7 @@ div:where(.swal2-container) .swal2-actions > button + button {
   margin-left: 15px !important;
 }
 
-.confirmed-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.confirmed-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  border-radius: 14px;
-  font-weight: 600;
-}
-
-.confirmed-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.confirmed-card small {
-  display: block;
-  font-size: 0.75rem;
-  opacity: 0.7;
-}
-
-.confirmed-card .value {
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-/* สีเบอร์ */
-.number-card {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-/* สีชื่อ */
-.name-card {
-  background: #e0f2fe;
-  color: #075985;
-}
-
 /* --- Home Page Refactor Styles --- */
-.home-landing-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px 0 40px;
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-.home-brand-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #eff6ff;
-  color: #2563eb;
-  padding: 8px 20px;
-  border-radius: 50px;
-  font-weight: 700;
-  margin-bottom: 24px;
-}
-
-.home-main-title {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #1e293b;
-  margin: 0 0 30px;
-}
-
-.home-illustration-wrapper {
-  width: 90%;
-  margin-bottom: 40px;
-}
-
-.home-main-img {
-  width: 100%;
-  height: auto;
-  border-radius: 30px;
-  /* ใส่ Shadow จางๆ ให้รูปดูมีมิติ */
-  filter: drop-shadow(0 10px 15px rgba(0,0,0,0.05));
-}
-
-.home-action-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-  padding: 0 20px;
-}
-
-.btn-start-large {
-  background: #2563eb;
-  color: white;
-  border: none;
-  padding: 18px;
-  border-radius: 50px;
-  font-size: 1.2rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
-  transition: all 0.2s ease;
-}
-
-.btn-start-large:active {
-  transform: scale(0.97);
-}
-
-.btn-login-google-outline {
-  background: white;
-  color: #334155;
-  border: 2px solid #e2e8f0;
-  padding: 14px;
-  border-radius: 50px;
-  font-size: 1rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-login-google-outline:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-}
-
-.google-icon-box {
-  background: #2563eb;
-  color: white;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.home-feature-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-top: 50px;
-  padding: 0 20px;
-  width: 100%;
-}
-
-.feature-mini-card {
-  background: white;
-  border: 1px solid #f1f5f9;
-  padding: 16px;
-  border-radius: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #475569;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
-}
-
-.home-footer-credit {
-  margin-top: 60px;
-  padding: 20px;
-  color: #94a3b8;
-  font-size: 0.75rem;
-  text-align: center;
-}
-
-/* ปรับแต่งความกว้างสำหรับหน้าจอเล็กมาก */
-@media (max-width: 380px) {
-  .home-main-title { font-size: 1.5rem; }
-  .home-feature-grid { gap: 8px; }
-  .feature-mini-card { padding: 12px; font-size: 0.75rem; }
-}
-
-/* --- New Home Page Styles (Matches Image Exactly) --- */
-.home-container {
-  max-width: 500px;
-  margin: 0 auto;
-  padding: 40px 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  background-color: #f8fafc;
-  min-height: 100vh;
-}
-
-.home-logo-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 25px;
-}
-
-.home-logo-box {
-  background: #e0e7ff;
-  padding: 8px;
-  border-radius: 12px;
-  color: #4f46e5;
-}
-
-.home-logo-text {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #1e293b;
-}
-
-.home-title {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #000;
-  margin-bottom: 30px;
-}
-
-.home-hero-wrapper {
-  width: 100%;
-  margin-bottom: 40px;
-}
-
-.home-hero-img {
-  width: 100%;
-  height: auto;
-  border-radius: 20px;
-}
-
-.home-actions {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 50px;
-}
-
-.btn-home-primary {
-  width: 100%;
-  background: #2563eb;
-  color: white;
-  border: none;
-  padding: 18px;
-  border-radius: 50px;
-  font-size: 1.2rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-}
-
-.btn-home-outline {
-  width: 100%;
-  background: white;
-  color: #2563eb;
-  border: 2px solid #2563eb;
-  padding: 16px;
-  border-radius: 50px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  cursor: pointer;
-}
-
-.google-icon-s {
-  background: #2563eb;
-  color: white;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-
-.home-features-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  width: 100%;
-  margin-bottom: 60px;
-}
-
-.feature-item {
-  background: white;
-  padding: 15px 5px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: #64748b;
-  border: 1px solid #f1f5f9;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-}
-
-.home-footer {
-  margin-top: auto;
-  color: #94a3b8;
-  font-size: 0.85rem;
-}
-
-/* ======================================================
-   Home Page แบบตรงปก (จากรูปของ User)
-====================================================== */
 .home-container {
   display: flex;
   flex-direction: column;
