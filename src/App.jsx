@@ -13,14 +13,14 @@ import {
   Plus, Trash2, Users, Receipt, Check, Coffee, X, Edit2, RefreshCw,
   Percent, Smartphone, ArrowRight, Menu, LayoutDashboard, UtensilsCrossed,
   Wallet, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LogOut,
-  History, Save, FileText, Calendar, User, Share2, Copy, CheckCircle, Link // ✅ เพิ่มไอคอนครบแล้ว
+  History, Save, FileText, Calendar, User, Share2, Copy, CheckCircle, Home // เพิ่ม Home icon
 } from 'lucide-react';
 
 import { auth, googleProvider, db } from './firebase';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import {
   collection, addDoc, query, where,
-  getDocs, orderBy, deleteDoc, doc
+  getDocs, orderBy, deleteDoc, doc, writeBatch // เพิ่ม writeBatch
 } from 'firebase/firestore';
 
 
@@ -170,6 +170,14 @@ const App = () => {
   // ✅ State สำหรับ Modal แชร์ห้อง
   const [createdRoom, setCreatedRoom] = useState(null);
   const [isCopiedLink, setIsCopiedLink] = useState(false);
+
+  // ✅ State สำหรับ PromptPay ยืนยันแล้วหรือยัง
+  const [isPromptPayConfirmed, setIsPromptPayConfirmed] = useState(false);
+
+  // ✅ State สำหรับ History Selection Mode
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedBillIds, setSelectedBillIds] = useState([]);
+
 
   const [confirmConfig, setConfirmConfig] = useState({
     open: false,
@@ -488,15 +496,23 @@ const handleLogout = () => {
 
   const saveBillToHistory = async () => {
 
+    // ✅ ปรับแก้: ถ้ายังไม่ Login ให้แสดง Popup พร้อมปุ่ม Login
     if (!user) {
       return Swal.fire({
         icon: "warning",
         title: "ยังไม่ได้เข้าสู่ระบบ",
         text: "กรุณาเข้าสู่ระบบก่อนบันทึกบิล",
-        confirmButtonText: "ตกลง",
+        showCancelButton: true,
+        confirmButtonText: "เข้าสู่ระบบเลย",
+        cancelButtonText: "ยกเลิก",
         buttonsStyling: false,
         customClass: {
-          confirmButton: "swal-primary-btn"
+          confirmButton: "swal-primary-btn",
+          cancelButton: "btn-cancel"
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          handleLogin();
         }
       });
     }
@@ -593,6 +609,42 @@ const handleLogout = () => {
     );
   };
 
+  // ✅ ฟังก์ชันลบหลายรายการ
+  const deleteSelectedHistory = async () => {
+    if (selectedBillIds.length === 0) return;
+
+    openConfirm(
+        "ยืนยันการลบ",
+        `ต้องการลบบิลที่เลือก ${selectedBillIds.length} รายการใช่ไหม?`,
+        async () => {
+            try {
+                const batch = writeBatch(db);
+                selectedBillIds.forEach(id => {
+                    const docRef = doc(db, "bills", id);
+                    batch.delete(docRef);
+                });
+                await batch.commit();
+                
+                fetchHistory();
+                setSelectedBillIds([]);
+                setIsSelectionMode(false);
+                closeConfirm();
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ลบเรียบร้อย',
+                    text: 'ลบบิลที่เลือกแล้ว',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } catch (error) {
+                console.error("Batch delete error", error);
+                Swal.fire("Error", "ลบไม่สำเร็จ", "error");
+            }
+        }
+    );
+  };
+
 
 const handleClearBill = () => {
   openConfirm(
@@ -616,6 +668,7 @@ const handleClearBill = () => {
 
       setPromptPayId('');
       setShowQR(false);
+      setIsPromptPayConfirmed(false); // Reset promptpay confirmed state
       setActiveTab('members');
 
       localStorage.removeItem('fs_members');
@@ -838,6 +891,24 @@ const handleClearBill = () => {
     );
   }, []);
 
+  // ✅ ฟังก์ชันเลือกทั้งหมด / ยกเลิกทั้งหมด ในแต่ละเมนู
+  const toggleSelectAll = (item) => {
+    const allMembers = members;
+    const isAllSelected = item.participants.length === allMembers.length;
+
+    setItems(prevItems => 
+        prevItems.map(i => {
+            if (i.id === item.id) {
+                return {
+                    ...i,
+                    participants: isAllSelected ? [] : [...allMembers]
+                };
+            }
+            return i;
+        })
+    );
+  };
+
 
   const toggleGroup = (groupName) => {
     setExpandedGroups(prev => ({
@@ -903,6 +974,21 @@ const handleClearBill = () => {
     menuOrder.indexOf(activeTab);
 
   const goToNext = () => {
+    // ✅ เช็คก่อนไปหน้า Summary ว่าเลือกคนครบหรือยัง
+    if (activeTab === 'items') {
+        const emptyItems = items.filter(item => item.participants.length === 0);
+        if (emptyItems.length > 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'เดี๋ยวก่อน!',
+                text: `เมนู "${emptyItems[0].name}" ยังไม่มีคนจ่ายเงินเลย เลือกคนกินก่อนนะครับ`,
+                confirmButtonColor: '#3085d6',
+                customClass: { confirmButton: "swal-primary-btn" }
+            });
+            return;
+        }
+    }
+
     if (currentIndex < menuOrder.length - 1) {
       setActiveTab(menuOrder[currentIndex + 1]);
     }
@@ -1025,10 +1111,11 @@ const renderContent = () => {
                 e.key === 'Enter' && handleAddMember()
               }
             />
+            {/* ✅ ปุ่ม + เปลี่ยนสีตามสถานะ */}
             <button
               onClick={handleAddMember}
-              disabled={!memberName}
-              className="btn-gray-add"
+              disabled={!memberName.trim()}
+              className={memberName.trim() ? "btn-add-green" : "btn-gray-add"}
             >
               <Plus size={20} />
             </button>
@@ -1156,6 +1243,13 @@ const renderContent = () => {
                                   className="btn-edit-box"
                                 >
                                   <Edit2 size={12} />
+                                </button>
+                                {/* ✅ ปุ่ม Select All ข้างชื่อเมนู */}
+                                <button 
+                                    className="btn-select-all"
+                                    onClick={() => toggleSelectAll(item)}
+                                >
+                                    {item.participants.length === members.length ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด'}
                                 </button>
                               </div>
                               <span className="item-price">
@@ -1350,9 +1444,37 @@ const renderContent = () => {
     case 'history':
       return (
         <div className="content-card animate-fade-in">
-          <div className="section-header">
-            <History size={20} />
-            <h3>ประวัติบิล</h3>
+          <div className="section-header" style={{justifyContent: 'space-between'}}>
+            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                <History size={20} />
+                <h3>ประวัติบิล</h3>
+            </div>
+            {/* ✅ History Toolbar */}
+            {historyList.length > 0 && user && (
+                <div className="history-toolbar">
+                    {isSelectionMode ? (
+                        <>
+                            <button 
+                                className="btn-delete-selected"
+                                onClick={deleteSelectedHistory}
+                                disabled={selectedBillIds.length === 0}
+                            >
+                                <Trash2 size={16}/> ลบ ({selectedBillIds.length})
+                            </button>
+                            <button className="btn-cancel-select" onClick={() => {
+                                setIsSelectionMode(false);
+                                setSelectedBillIds([]);
+                            }}>
+                                เสร็จสิ้น
+                            </button>
+                        </>
+                    ) : (
+                        <button className="btn-select-mode" onClick={() => setIsSelectionMode(true)}>
+                            เลือก / ลบ
+                        </button>
+                    )}
+                </div>
+            )}
           </div>
 
           {!user ? (
@@ -1375,52 +1497,74 @@ const renderContent = () => {
                 <div
                   key={bill.id}
                   className="history-card"
-                  onClick={() => setViewingBill(bill)}
+                  onClick={() => {
+                      if (isSelectionMode) {
+                          if (selectedBillIds.includes(bill.id)) {
+                              setSelectedBillIds(prev => prev.filter(id => id !== bill.id));
+                          } else {
+                              setSelectedBillIds(prev => [...prev, bill.id]);
+                          }
+                      } else {
+                          setViewingBill(bill);
+                      }
+                  }}
                 >
-                  <div className="history-header-row">
-                    <div className="history-date-group">
-                      <span className="history-date">
-                        <Calendar size={14} style={{ marginRight: '4px' }} />
-                        {new Date(bill.date.seconds * 1000)
-                          .toLocaleDateString('th-TH', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: '2-digit'
-                          })}
-                      </span>
-                      <span className="history-time">
-                        {new Date(bill.date.seconds * 1000)
-                          .toLocaleTimeString('th-TH', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })} น.
-                      </span>
+                  {/* ✅ Checkbox Selection */}
+                  {isSelectionMode && (
+                      <div className={`history-checkbox ${selectedBillIds.includes(bill.id) ? 'checked' : ''}`}>
+                          {selectedBillIds.includes(bill.id) && <Check size={14} color="white"/>}
+                      </div>
+                  )}
+
+                  <div className="history-card-content">
+                    <div className="history-header-row">
+                        <div className="history-date-group">
+                        <span className="history-date">
+                            <Calendar size={14} style={{ marginRight: '4px' }} />
+                            {new Date(bill.date.seconds * 1000)
+                            .toLocaleDateString('th-TH', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: '2-digit'
+                            })}
+                        </span>
+                        <span className="history-time">
+                            {new Date(bill.date.seconds * 1000)
+                            .toLocaleTimeString('th-TH', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })} น.
+                        </span>
+                        </div>
+                        <div className="history-price">
+                        {bill.totalAmount?.toLocaleString()} ฿
+                        </div>
                     </div>
-                    <div className="history-price">
-                      {bill.totalAmount?.toLocaleString()} ฿
+                    <div className="history-divider"></div>
+                    <div className="history-footer-row">
+                        <div className="history-stats">
+                        <span className="stat-badge">
+                            <UtensilsCrossed size={12} />
+                            {bill.items.length}
+                        </span>
+                        <span className="stat-badge">
+                            <Users size={12} />
+                            {bill.members.length}
+                        </span>
+                        </div>
+                        {/* ถ้าเลือกอยู่ ซ่อนปุ่มลบเดี่ยว */}
+                        {!isSelectionMode && (
+                            <button
+                            className="btn-delete-icon"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                deleteHistoryItem(bill.id);
+                            }}
+                            >
+                            <Trash2 size={16} />
+                            </button>
+                        )}
                     </div>
-                  </div>
-                  <div className="history-divider"></div>
-                  <div className="history-footer-row">
-                    <div className="history-stats">
-                      <span className="stat-badge">
-                        <UtensilsCrossed size={12} />
-                        {bill.items.length}
-                      </span>
-                      <span className="stat-badge">
-                        <Users size={12} />
-                        {bill.members.length}
-                      </span>
-                    </div>
-                    <button
-                      className="btn-delete-icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteHistoryItem(bill.id);
-                      }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
                   </div>
                 </div>
               ))}
@@ -1443,33 +1587,66 @@ const renderContent = () => {
           </div>
 
           <div className="payment-box">
-            <div className="input-row-icon">
-              <Smartphone size={18} className="icon-input" />
-              <input
-                type="text"
-                className="input-promptpay"
-                placeholder="เบอร์มือถือ / เลขบัตร ปชช."
-                maxLength={13}
-                value={promptPayId}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, '');
-                  setPromptPayId(val);
-                  setShowQR(false);
-                }}
-              />
-            </div>
+            
+            {/* ✅ Mode 1: ยังไม่ได้ยืนยันเบอร์ */}
+            {!isPromptPayConfirmed ? (
+                <>
+                    <div className="input-row-icon">
+                        <Smartphone size={18} className="icon-input" />
+                        <input
+                            type="text"
+                            className="input-promptpay"
+                            placeholder="เบอร์มือถือ / เลขบัตร ปชช."
+                            maxLength={13}
+                            value={promptPayId}
+                            onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setPromptPayId(val);
+                            }}
+                        />
+                    </div>
+                    <button 
+                        className="btn-full-primary"
+                        onClick={() => {
+                            if (isValidLength) setIsPromptPayConfirmed(true);
+                            else Swal.fire("แจ้งเตือน", "กรุณากรอกเบอร์ให้ถูกต้อง", "warning");
+                        }}
+                        disabled={!isValidLength}
+                    >
+                        ยืนยันเบอร์พร้อมเพย์
+                    </button>
+                </>
+            ) : (
+                /* ✅ Mode 2: ยืนยันแล้ว เลือกได้ 2 ทาง */
+                <div className="promptpay-confirmed-box animate-fade-in">
+                    <div className="confirmed-header">
+                        <span>✅ เบอร์: {promptPayId}</span>
+                        <button className="btn-edit-small" onClick={() => setIsPromptPayConfirmed(false)}>แก้ไข</button>
+                    </div>
 
-            {!showQR && isValidLength && (
-              <button
-                onClick={() => setShowQR(true)}
-                className="btn-create-qr"
-              >
-                สร้าง QR Code
-                <ArrowRight size={16} />
-              </button>
+                    <div className="payment-mode-grid">
+                        <button 
+                            className={`mode-card ${showQR ? 'active' : ''}`}
+                            onClick={() => setShowQR(true)}
+                        >
+                            <div className="mode-icon"><QRCodeCanvas value="demo" size={24}/></div>
+                            <span>QR ยอดรวม</span>
+                            <small>(เพื่อนกรอกยอดเอง)</small>
+                        </button>
+
+                        <button 
+                            className="mode-card primary"
+                            onClick={handleCreateRoom}
+                        >
+                            <div className="mode-icon"><Home size={24}/></div>
+                            <span>ห้องหารออนไลน์</span>
+                            <small>(ระบบคิดยอดให้)</small>
+                        </button>
+                    </div>
+                </div>
             )}
 
-            {showQR && isValidLength && (
+            {showQR && isValidLength && isPromptPayConfirmed && (
               <div className="qr-container">
                 <div className="qr-wrapper">
                   <QRCodeCanvas
@@ -1482,23 +1659,6 @@ const renderContent = () => {
                 <div className="qr-info">
                   <span>สแกนจ่ายได้เลย</span>
                 </div>
-              </div>
-            )}
-
-            {/* ✅ ปุ่มสร้างห้องจ่ายเงิน */}
-            {isValidLength && (
-              <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
-                <h4 style={{marginBottom: '10px', fontSize: '1rem', color: '#334155'}}>ห้องหารเงินออนไลน์</h4>
-                <button
-                  onClick={handleCreateRoom}
-                  className="btn-full-primary"
-                  style={{ background: '#10b981', borderColor: '#059669', color: 'white' }}
-                >
-                  <Share2 size={18} /> สร้างห้อง & แชร์ลิงก์ให้เพื่อน
-                </button>
-                <p style={{fontSize: '0.8rem', color: '#64748b', marginTop: '8px', textAlign: 'center'}}>
-                  เพื่อนจะเห็นเฉพาะยอดของตัวเอง และสแกนจ่ายได้ทันที
-                </p>
               </div>
             )}
 
@@ -1782,17 +1942,19 @@ return (
           </div>
 
           <div className="share-footer">
+            {/* ✅ ปุ่มเปิดหน้าเว็บ (ย้ายมาเป็นปุ่มหลัก) */}
             <button 
               className="btn-full-primary" 
-              onClick={() => setCreatedRoom(null)}
-            >
-              ตกลง
-            </button>
-            <button 
-              className="btn-text-only"
               onClick={() => window.open(createdRoom.link, '_blank')}
             >
-              เปิดหน้าเว็บดูเอง
+              🚀 เปิดหน้าเว็บดูเอง
+            </button>
+            {/* ✅ ปุ่มย้อนกลับ (ย้ายมาล่างสุด) */}
+            <button 
+              className="btn-text-only"
+              onClick={() => setCreatedRoom(null)}
+            >
+              ย้อนกลับ
             </button>
           </div>
 
