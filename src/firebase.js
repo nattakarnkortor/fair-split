@@ -6,13 +6,13 @@ import { getFirestore } from "firebase/firestore";
 // ⚠️ ตรงนี้สำคัญ! ไปก๊อปปี้ firebaseConfig จากหน้าเว็บ Firebase Console ของคุณมาใส่แทนที่ตรงนี้นะครับ
 // (ค่าที่คุณเคยทำไว้ตอน Phase 3)
 const firebaseConfig = {
-  apiKey: "AIzaSyCnmn9iT6HqSl1tmFrCkYxi8f0R2IBk8V8",
-  authDomain: "fair-split-app-c6b72.firebaseapp.com",
-  projectId: "fair-split-app-c6b72",
-  storageBucket: "fair-split-app-c6b72.firebasestorage.app",
-  messagingSenderId: "273822038005",
-  appId: "1:273822038005:web:f80734be52e270507392bc",
-  measurementId: "G-8LVDXKBLV0"
+  apiKey: "AIzaSyArCyZXRrfIzxiPIKa6eorGsgOk4f0eIQI",
+  authDomain: "fair-split-b76a2.firebaseapp.com",
+  projectId: "fair-split-b76a2",
+  storageBucket: "fair-split-b76a2.firebasestorage.app",
+  messagingSenderId: "770320401946",
+  appId: "1:770320401946:web:0ad539b30a6448952873a3",
+  measurementId: "G-MZ4ZXS7J2R"
 };
 
 // เริ่มต้นระบบ Firebase
