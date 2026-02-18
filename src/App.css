@@ -45,7 +45,7 @@ button {
   position: fixed; top: 0; left: 0;
   height: 100vh; height: 100dvh;
   z-index: 1000; transition: transform 0.3s ease;
-  overflow-y: auto; padding-bottom: 150px;
+  overflow-y: auto; padding-bottom: 20px; /* ปรับ padding ล่าง */
 }
 .sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; flex-shrink: 0; }
 .logo-box { background: rgba(255,255,255,0.1); padding: 8px; border-radius: 12px; }
@@ -60,8 +60,17 @@ button {
 .total-display-sidebar { background: rgba(0,0,0,0.2); padding: 16px; border-radius: 12px; text-align: center; margin-bottom: 12px; }
 .total-display-sidebar small { color: #94a3b8; display: block; margin-bottom: 4px; }
 .total-display-sidebar .amount { font-size: 1.8rem; font-weight: bold; color: var(--success); }
-.btn-reset-sidebar { width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #cbd5e1; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; margin-bottom: 20px; }
+.btn-reset-sidebar { width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #cbd5e1; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; margin-bottom: 10px; }
 .btn-reset-sidebar:hover { border-color: #ef4444; color: #ef4444; }
+
+/* ✅ Sidebar Copyright (ล่างสุด) */
+.sidebar-copyright {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.7rem;
+    text-align: center;
+    margin-top: 10px;
+    font-weight: 300;
+}
 
 /* Content Area */
 .content-area { flex: 1; margin-left: 280px; padding: 30px; max-width: 800px; width: 100%; }
@@ -79,12 +88,19 @@ button {
 .btn-icon-small:hover { color: var(--danger); }
 
 /* Inputs */
-.input-row, .add-item-row, .payment-box { width: 100%; }
+.input-row, .payment-box { width: 100%; }
 .input-row input { flex: 1; height: 48px; border-radius: 12px; border: 1px solid #cbd5e1; padding: 0 16px; font-size: 1rem; width: 100%; margin-bottom: 10px; }
-.add-item-row { display: grid; grid-template-columns: 2fr 1fr 1.5fr auto; gap: 8px; margin-bottom: 20px; }
-.add-item-row input { width: 100%; height: 48px; border-radius: 12px; border: 1px solid #93c5fd; padding: 0 12px; }
 
-/* ✅ ปุ่ม Add สีเขียว */
+/* ✅ จัด Layout Input ในหน้า Items */
+.add-item-inputs { 
+    display: grid; 
+    grid-template-columns: 2fr 1fr 1.5fr; 
+    gap: 8px; 
+    margin-bottom: 12px; 
+}
+.add-item-inputs input { width: 100%; height: 48px; border-radius: 12px; border: 1px solid #93c5fd; padding: 0 12px; }
+
+/* ✅ ปุ่ม Add Member สีเขียว */
 .btn-add-green {
     width: 100% !important;
     height: 48px !important;
@@ -100,8 +116,30 @@ button {
     box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
 }
 
-.btn-add-blue { height: 48px !important; width: 48px !important; border-radius: 12px !important; display: flex; align-items: center; justify-content: center; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; cursor: pointer; font-weight: 500; transition: 0.2s; }
-.btn-add-blue:hover { background: #dbeafe; }
+/* ✅ ปุ่ม Add Item สีฟ้า (เต็มความกว้าง) */
+.btn-add-item-full {
+    width: 100%;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
+    font-size: 1rem;
+}
+.btn-add-item-full:hover {
+    background: #dbeafe;
+}
+
+.btn-add-blue { /* เก็บไว้เผื่อใช้ แต่ตอนนี้หน้า Item ใช้แบบ Full */
+    height: 48px !important; width: 48px !important; border-radius: 12px !important; display: flex; align-items: center; justify-content: center; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; cursor: pointer; font-weight: 500; transition: 0.2s; 
+}
+
 .btn-gray-add { background: #f8fafc; color: #cbd5e1; border: 1px solid #e2e8f0; width: 100% !important; height: 48px !important; border-radius: 12px !important; display: flex; align-items: center; justify-content: center; margin-top: 5px; cursor: not-allowed;}
 .btn-full-primary { width: 100%; background: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; padding: 14px; border-radius: 12px; font-size: 1rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: none; transition: background 0.2s; }
 .btn-full-primary:hover { background: #c7d2fe; }
@@ -121,15 +159,15 @@ button {
     background: #f1f5f9;
 }
 
-/* ✅ เส้นแบ่งในหน้า Items */
+/* ✅ เส้นแบ่งในหน้า Items (หนาขึ้น) */
 .items-separator {
     border: 0;
-    border-top: 1px solid #f1f5f9;
+    border-top: 2px solid #e2e8f0;
     margin: 24px 0;
 }
 
 
-/* --- 🔥 Item List Style (Card Style แยกบรรทัด) --- */
+/* --- Item List Style --- */
 .items-list { display: flex; flex-direction: column; gap: 10px; }
 .item-group-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
 .group-header { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
@@ -139,17 +177,15 @@ button {
 .sub-item-card { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 10px; }
 .sub-item-card:last-child { border-bottom: none; }
 
-/* บรรทัดบน: #1 [Edit] --- 25 */
 .sub-item-top-row { display: flex; justify-content: space-between; align-items: center; }
 .sub-item-index { font-weight: 700; color: #2563eb; font-size: 1rem; margin-right: 4px; }
 .btn-edit-box { background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px; cursor: pointer; color: #64748b; display: flex; }
 .item-price { font-weight: 700; color: #2563eb; font-size: 1.1rem; }
 
-/* บรรทัดล่าง: Chips --- Delete */
 .sub-item-bottom-row { display: flex; justify-content: space-between; align-items: center; }
 .participant-selector-row { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; margin-right: 12px; }
 
-/* Chips สไตล์ตามรูป */
+/* Chips */
 .toggle-chip-pill {
   border: 1px solid #e2e8f0; background: white; 
   padding: 4px 10px; border-radius: 20px; 
@@ -223,15 +259,15 @@ button {
     padding: 14px 16px;
     border-radius: 14px;
     font-weight: 600;
-    width: 100%; /* ✅ ทำให้เต็มกรอบป้องกันบรรทัดสลับ */
+    width: 100%;
 }
 
 .confirmed-left {
     display: flex;
     align-items: center;
     gap: 12px;
-    flex: 1; /* ✅ ให้กินพื้นที่ส่วนใหญ่ */
-    overflow: hidden; /* ✅ ป้องกันชื่อยาวเกินจนดัน */
+    flex: 1; 
+    overflow: hidden; 
 }
 
 .confirmed-left .icon {
@@ -251,7 +287,7 @@ button {
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis; /* ✅ ถ้าชื่อยาวให้ขึ้น ... */
+    text-overflow: ellipsis; 
 }
 
 /* สีเบอร์ */
@@ -273,7 +309,7 @@ button {
     border-radius: 8px;
     font-size: 0.8rem;
     cursor: pointer;
-    flex-shrink: 0; /* ✅ ไม่ให้ปุ่มหด */
+    flex-shrink: 0; 
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
@@ -447,11 +483,16 @@ button {
   .mobile-menu-btn { background: none; border: none; cursor: pointer; }
   .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 95; }
   
-  .add-item-row { display: grid; grid-template-columns: 1fr 1.5fr; grid-template-areas: "name name" "qty price" "btn btn"; gap: 10px; }
-  .add-item-row .input-name { grid-area: name; width: 100%; }
-  .add-item-row .input-qty { grid-area: qty; width: 100%; }
-  .add-item-row .input-price { grid-area: price; width: 100%; }
-  .add-item-row .btn-add-blue { grid-area: btn; width: 100%; margin-top: 5px; }
+  /* ✅ ปรับ Grid หน้า Items สำหรับ Mobile */
+  .add-item-inputs { 
+      grid-template-columns: 1fr 1fr; 
+      grid-template-areas: 
+          "name name" 
+          "qty price"; 
+  }
+  .add-item-inputs .input-name { grid-area: name; }
+  .add-item-inputs .input-qty { grid-area: qty; }
+  .add-item-inputs .input-price { grid-area: price; }
 }
 
 .receipt-member-header {
@@ -737,7 +778,7 @@ button {
 .home-landing {
   position: relative;   
   text-align: center;
-  overflow: hidden;    
+  overflow: hidden;     
 }
 
 
@@ -914,16 +955,18 @@ div:where(.swal2-container) .swal2-actions > button + button {
   margin-left: 15px !important;
 }
 
-/* --- Home Page Refactor Styles --- */
+/* ✅ Home Page Full Screen Style */
 .home-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 30px 20px 20px;
-  min-height: 100vh;
+  /* ทำให้เต็มจอ */
+  width: 100%;
+  min-height: calc(100vh - 60px); /* ลบ Padding ของ content-area ออกถ้าจำเป็น */
+  height: 100%;
   background-color: #f4f8fb; /* สีพื้นหลังฟ้าอ่อนๆ แบบในรูป */
-  max-width: 600px;
-  margin: 0 auto;
+  /* ลบ max-width ออกเพื่อให้เต็มจอ */
 }
 
 .home-logo-container {
@@ -977,6 +1020,7 @@ div:where(.swal2-container) .swal2-actions > button + button {
   flex-direction: column;
   gap: 12px;
   margin-bottom: 30px;
+  max-width: 400px; /* จำกัดความกว้างปุ่มไม่ให้ยาวเกินไป */
 }
 
 .btn-home-start {
@@ -1009,6 +1053,7 @@ div:where(.swal2-container) .swal2-actions > button + button {
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   width: 100%;
+  max-width: 500px;
   margin-bottom: 20px;
 }
 
@@ -1034,11 +1079,4 @@ div:where(.swal2-container) .swal2-actions > button + button {
   color: #64748b;
   font-weight: 500;
   line-height: 1.3;
-}
-
-.home-footer {
-  margin-top: auto; 
-  font-size: 0.8rem;
-  color: #94a3b8;
-  padding: 20px 0;
 }

@@ -1,13 +1,14 @@
+// GuestPay.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db } from './firebase'; // ตรวจสอบ path ให้ถูก
+import { db } from './firebase'; 
 import { doc, getDoc } from 'firebase/firestore';
 import { QRCodeCanvas } from 'qrcode.react';
 import { 
-  ArrowLeft, Receipt, User, Wallet, Loader2, 
-  AlertCircle, CheckCircle, Utensils
+  ArrowLeft, Receipt, User, Loader2, 
+  AlertCircle, CheckCircle, Utensils, Download, Check
 } from 'lucide-react';
-import './GuestPay.css'; // เดี๋ยวสร้างไฟล์นี้ต่อ
+import './GuestPay.css';
 
 const avatarEmojis = [
   "😎","🔥","🐱","🐶","🦊","🐼","🐵","🐯","🐨",
@@ -21,6 +22,19 @@ const getRandomAvatar = () => {
   ];
 };
 
+// ✅ Helper: Format เงิน (ปรับแก้ตามสั่ง)
+// - ถ้าเป็นจำนวนเต็ม -> ไม่แสดงจุดทศนิยม (20)
+// - ถ้ามีเศษ -> แสดง 2 ตำแหน่ง (20.50)
+const formatCurrency = (amount) => {
+    const num = Number(amount);
+    if (Number.isInteger(num)) {
+        return num.toLocaleString('en-US');
+    }
+    return num.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+};
 
 // --- Helper: สร้าง Payload PromptPay ---
 function generatePromptPayPayload(target, amount) {
@@ -57,14 +71,13 @@ function generatePromptPayPayload(target, amount) {
   return payload + crc(payload);
 }
 
-// --- Helper: คำนวณยอดเงิน (Logic เดียวกับ App.jsx) ---
+// --- Helper: คำนวณยอดเงิน ---
 const calculateMyBill = (roomData, myName) => {
   if (!roomData || !myName) return null;
 
   const myItems = [];
   let myTotalFood = 0;
 
-  // 1. หา item ที่เรามีส่วนร่วม
   roomData.items.forEach(item => {
     if (item.participants.includes(myName)) {
       const pricePerHead = item.price / item.participants.length;
@@ -78,8 +91,7 @@ const calculateMyBill = (roomData, myName) => {
     }
   });
 
-  // 2. คำนวณ VAT / Service Charge ตามสัดส่วน
-  const subtotal = roomData.subtotal || 1; // กันหาร 0
+  const subtotal = roomData.subtotal || 1;
   const ratio = myTotalFood / subtotal;
   
   const totalExtraCharges = (roomData.serviceChargeAmount || 0) + (roomData.vatAmount || 0);
@@ -101,13 +113,15 @@ const GuestPay = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // ✅ State สำหรับสถานะการดาวน์โหลด
+  const [isDownloaded, setIsDownloaded] = useState(false);
 
-  // ดึงข้อมูลห้อง
   useEffect(() => {
     const fetchRoom = async () => {
       if (!roomId) return;
       try {
-        const docRef = doc(db, "paymentRooms", roomId); // *ต้องสร้าง Collection นี้ใน App.jsx
+        const docRef = doc(db, "paymentRooms", roomId);
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
@@ -124,19 +138,36 @@ const GuestPay = () => {
     fetchRoom();
   }, [roomId]);
 
-  // คำนวณข้อมูลบิลของ User ที่เลือก
+  // Reset download status when user changes
+  useEffect(() => {
+    setIsDownloaded(false);
+  }, [selectedUser]);
+
   const myBillData = useMemo(() => {
     return calculateMyBill(roomData, selectedUser);
   }, [roomData, selectedUser]);
 
-  // สร้าง QR Code String
   const qrCodeValue = useMemo(() => {
     if (!myBillData || !roomData?.promptPayId) return "";
     return generatePromptPayPayload(roomData.promptPayId, myBillData.netTotal);
   }, [myBillData, roomData]);
 
-
-  // --- Render Views ---
+  // ✅ ฟังก์ชันดาวน์โหลด QR Code
+  const handleDownloadQR = () => {
+    const canvas = document.getElementById('guest-qr-canvas');
+    if (canvas) {
+        const pngUrl = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.href = pngUrl;
+        downloadLink.download = `FairSplit_${selectedUser}.png`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
+        // Update status
+        setIsDownloaded(true);
+    }
+  };
 
   if (loading) return (
     <div className="guest-screen-center">
@@ -170,13 +201,8 @@ const GuestPay = () => {
           
           <div className="member-grid">
               {roomData.members.map(member => {
-
-                // รองรับทั้ง string และ object
                 const name = typeof member === "string" ? member : member.name;
-                const avatar =
-                  typeof member === "string"
-                    ? getRandomAvatar()
-                    : member.avatar || getRandomAvatar();
+                const avatar = typeof member === "string" ? getRandomAvatar() : member.avatar || getRandomAvatar();
 
                 return (
                   <button
@@ -220,7 +246,8 @@ const GuestPay = () => {
             </div>
             <div className="ticket-total-display">
               <span className="label">ยอดที่ต้องจ่าย</span>
-              <span className="amount">{myBillData.netTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ฿</span>
+              {/* ✅ ใช้ Helper ทศนิยม */}
+              <span className="amount">{formatCurrency(myBillData.netTotal)} ฿</span>
             </div>
           </div>
 
@@ -239,7 +266,8 @@ const GuestPay = () => {
                       <span className="item-name">{item.name}</span>
                       {item.sharedBy > 1 && <span className="item-badge">หาร {item.sharedBy}</span>}
                     </div>
-                    <span className="item-price">{item.price.toLocaleString()}</span>
+                    {/* ✅ ใช้ Helper ทศนิยม */}
+                    <span className="item-price">{formatCurrency(item.price)}</span>
                   </div>
                 ))
               )}
@@ -250,7 +278,8 @@ const GuestPay = () => {
               <div className="extra-charges mt-4 pt-2 border-t border-dashed border-gray-200">
                 <div className="bill-item-row text-muted">
                   <span>ค่าธรรมเนียม/ภาษี (เฉลี่ย)</span>
-                  <span>{myBillData.extraCharge.toLocaleString(undefined, {maximumFractionDigits: 2})}</span>
+                  {/* ✅ ใช้ Helper ทศนิยม */}
+                  <span>{formatCurrency(myBillData.extraCharge)}</span>
                 </div>
               </div>
             )}
@@ -261,12 +290,13 @@ const GuestPay = () => {
             <div className="qr-wrapper">
               {roomData.promptPayId ? (
                 <QRCodeCanvas 
+                  id="guest-qr-canvas" // ✅ ใส่ ID เพื่อให้ดึงไป Download ได้
                   value={qrCodeValue} 
                   size={180} 
                   level="M" 
                   includeMargin={true}
                   imageSettings={{
-                    src: "https://promptpay.io/img/logo.png", // โลโก้ PromptPay ตรงกลาง (Option)
+                    src: "https://promptpay.io/img/logo.png",
                     height: 24,
                     width: 24,
                     excavate: true,
@@ -279,6 +309,20 @@ const GuestPay = () => {
             
             <p className="qr-prompt">สแกนจ่ายยอดนี้ได้เลย</p>
             {roomData.promptPayId && <p className="qr-id">พร้อมเพย์: {roomData.promptPayId}</p>}
+
+            {/* ✅ ปุ่ม Download และ สถานะ */}
+            {roomData.promptPayId && (
+                <div className="download-section">
+                    <button 
+                        className={`btn-download-qr ${isDownloaded ? 'downloaded' : ''}`} 
+                        onClick={handleDownloadQR}
+                    >
+                        {isDownloaded ? <Check size={16} /> : <Download size={16} />}
+                        {isDownloaded ? 'บันทึกแล้ว' : 'บันทึก QR Code'}
+                    </button>
+                </div>
+            )}
+
           </div>
 
         </div>

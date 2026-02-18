@@ -13,17 +13,17 @@ import {
   Plus, Trash2, Users, Receipt, Check, Coffee, X, Edit2, RefreshCw,
   Percent, Smartphone, ArrowRight, Menu, LayoutDashboard, UtensilsCrossed,
   Wallet, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LogOut,
-  History, Save, FileText, Calendar, User, Share2, Copy, CheckCircle, Home, Utensils, Calculator, CreditCard // เพิ่ม Home icon
+  History, Save, FileText, Calendar, User, Share2, Copy, CheckCircle, Home, Utensils, Calculator, CreditCard
 } from 'lucide-react';
 
 import { auth, googleProvider, db } from './firebase';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import {
   collection, addDoc, query, where,
-  getDocs, orderBy, deleteDoc, doc, writeBatch // เพิ่ม writeBatch
+  getDocs, orderBy, deleteDoc, doc, writeBatch
 } from 'firebase/firestore';
 
-// นำเข้ารูปภาพประกอบ (ถ้ามี Error ตรงนี้ให้เช็ค path ให้ถูกต้อง)
+// นำเข้ารูปภาพประกอบ
 import heroImage from './assets/hero.png';
 
 const avatarEmojis = [
@@ -300,7 +300,7 @@ const [members, setMembers] = useState(() => {
     useServiceCharge,
     serviceChargePercent,
     promptPayId,
-    promptPayName   // ✅ เพิ่มอันนี้
+    promptPayName
   ]);
 
   // 🔸 Auth Listener
@@ -722,7 +722,7 @@ const handleClearBill = () => {
     // 1. เช็คความพร้อม
     if (items.length === 0) return Swal.fire("แจ้งเตือน", "ไม่มีรายการอาหาร", "warning");
     if (!promptPayId) return Swal.fire("แจ้งเตือน", "กรุณากรอกเบอร์ PromptPay ก่อนสร้างห้อง", "warning");
-  
+   
     // 2. ถามยืนยัน
     const confirm = await Swal.fire({
       title: 'สร้างห้องเก็บเงิน?',
@@ -731,15 +731,16 @@ const handleClearBill = () => {
       showCancelButton: true,
       confirmButtonText: 'สร้างเลย',
       cancelButtonText: 'ยกเลิก',
+      reverseButtons: true,
       buttonsStyling: false,
       customClass: {
         confirmButton: "swal-primary-btn",
         cancelButton: "btn-cancel"
       }
     });
-  
+   
     if (!confirm.isConfirmed) return;
-  
+   
     try {
       // 3. เตรียมข้อมูล
         const roomPayload = {
@@ -756,7 +757,7 @@ const handleClearBill = () => {
         totalAmount: grandTotal,
         config: { useVat, useServiceCharge, serviceChargePercent }
       };
-  
+   
       // 4. บันทึกลง Firebase
       const docRef = await addDoc(collection(db, "paymentRooms"), roomPayload);
       
@@ -769,7 +770,7 @@ const handleClearBill = () => {
         id: docRef.id,
         link: roomLink
       });
-  
+   
     } catch (error) {
       console.error(error);
       Swal.fire("Error", "สร้างห้องไม่สำเร็จ", "error");
@@ -1204,51 +1205,51 @@ case 'members':
             <h3>รายการอาหาร</h3>
           </div>
 
+          {/* ✅ ปรับแก้ Layout ตามที่ขอ: ปุ่มเพิ่มยาวบรรทัดใหม่ */}
           <div className="add-item-wrapper-blue">
-            <div className="add-item-row">
-              <input
-                className="input-name"
-                type="text"
-                placeholder="ชื่อเมนู"
-                value={itemName}
-                onChange={(e) => setItemName(e.target.value)}
-              />
-              <input
-                className="input-qty"
-                type="number"
-                min="1"
-                placeholder="จำนวน"
-                value={itemQty}
-                onChange={(e) => setItemQty(e.target.value)}
-              />
+            {/* กล่องใส่ Input */}
+            <div className="add-item-inputs">
                 <input
-                className="input-price"
-                type="text"
-                inputMode="decimal"
-                placeholder="ราคา"
-                value={itemPrice}
-                onChange={(e) => {
-                  const value = e.target.value;
-
-                  // อนุญาตเฉพาะตัวเลขและจุดทศนิยม
-                  if (/^\d*\.?\d*$/.test(value)) {
-                    setItemPrice(value);
-                  }
-                }}
-                onKeyDown={(e) =>
-                  e.key === 'Enter' && handleAddItem()
-                }
-              />
-              <button
-                onClick={handleAddItem}
-                className="btn-add-blue"
-              >
-                เพิ่ม
-              </button>
+                    className="input-name"
+                    type="text"
+                    placeholder="ชื่อเมนู"
+                    value={itemName}
+                    onChange={(e) => setItemName(e.target.value)}
+                />
+                <input
+                    className="input-qty"
+                    type="number"
+                    min="1"
+                    placeholder="จำนวน"
+                    value={itemQty}
+                    onChange={(e) => setItemQty(e.target.value)}
+                />
+                <input
+                    className="input-price"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="ราคา"
+                    value={itemPrice}
+                    onChange={(e) => {
+                        const value = e.target.value;
+                        if (/^\d*\.?\d*$/.test(value)) {
+                            setItemPrice(value);
+                        }
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
+                />
             </div>
+            
+            {/* ปุ่มเพิ่ม ย้ายมาเป็นบรรทัดใหม่เต็มความกว้าง */}
+            <button
+                onClick={handleAddItem}
+                className="btn-add-item-full"
+            >
+                เพิ่ม
+            </button>
           </div>
 
-          {/* ✅ เพิ่มเส้นแบ่งตรงนี้ */}
+          {/* ✅ เส้นแบ่งหนาขึ้น */}
           <hr className="items-separator" />
 
           <div className="items-list">
@@ -1690,9 +1691,14 @@ case 'members':
                     <button 
                       className="btn-full-primary"
                       onClick={() => {
+                        // ✅ Validation: เช็คว่ากรอกครบไหม
                         if (!promptPayName.trim()) {
                           Swal.fire("แจ้งเตือน", "กรุณากรอกชื่อเจ้าของบัญชี", "warning");
                           return;
+                        }
+                        if (!promptPayId.trim()) {
+                            Swal.fire("แจ้งเตือน", "กรุณากรอกเบอร์พร้อมเพย์", "warning");
+                            return;
                         }
 
                         if (isValidLength) {
@@ -1701,7 +1707,8 @@ case 'members':
                           Swal.fire("แจ้งเตือน", "กรุณากรอกเบอร์ให้ถูกต้อง", "warning");
                         }
                       }}
-                      disabled={!isValidLength || !promptPayName.trim()}
+                      // disabled={!isValidLength || !promptPayName.trim()} 
+                      // 👆 เอา disabled ออกเพื่อให้กดแล้วเด้งเตือนได้
                     >
                       ยืนยันข้อมูลพร้อมเพย์
                     </button>
@@ -1711,7 +1718,27 @@ case 'members':
                 <div className="promptpay-confirmed-box animate-fade-in">
                         <div className="confirmed-wrapper">
 
-                          {/* 🔹 เบอร์พร้อมเพย์ */}
+                          {/* 🔹 ชื่อบัญชี (เอาขึ้นก่อน) */}
+                          {promptPayName && (
+                            <div className="confirmed-card name-card">
+                              <div className="confirmed-left">
+                                <span className="icon">👤</span>
+                                <div>
+                                  <small>ชื่อบัญชี</small>
+                                  <div className="value">{promptPayName}</div>
+                                </div>
+                              </div>
+
+                              <button
+                                className="btn-edit-small"
+                                onClick={() => setIsPromptPayConfirmed(false)}
+                              >
+                                ✏️
+                              </button>
+                            </div>
+                          )}
+
+                          {/* 🔹 เบอร์พร้อมเพย์ (เอาลงล่าง) */}
                           <div className="confirmed-card number-card">
                             <div className="confirmed-left">
                               <span className="icon">📱</span>
@@ -1728,28 +1755,6 @@ case 'members':
                               ✏️
                             </button>
                           </div>
-
-
-                          {/* 🔹 ชื่อบัญชี */}
-                          {promptPayName && (
-                            <div className="confirmed-card name-card">
-                              <div className="confirmed-left">
-                                <span className="icon">👤</span>
-                                <div>
-                                  <small>ชื่อบัญชี</small>
-                                  <div className="value">{promptPayName}</div>
-                                </div>
-                              </div>
-
-                              {/* ✅ เพิ่มปุ่มแก้ไขชื่อ */}
-                              <button
-                                className="btn-edit-small"
-                                onClick={() => setIsPromptPayConfirmed(false)}
-                              >
-                                ✏️
-                              </button>
-                            </div>
-                          )}
 
                         </div>
                     <div className="payment-mode-grid">
@@ -1975,8 +1980,8 @@ return (
           ล้างบิล
         </button>
 
-        {/* ✅ เพิ่ม Copyright ไว้ที่นี่ */}
-        <div className="sidebar-copyright" style={{marginTop: '10px', fontSize: '0.7rem', color: '#64748b', textAlign: 'center'}}>
+        {/* ✅ ย้าย Copyright มาไว้ตรงนี้ (ล่างสุด) */}
+        <div className="sidebar-copyright">
             © 2026 FairSplit | dev by หารเท่า ไม่หารใจ
         </div>
       </div>
